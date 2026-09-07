@@ -20,7 +20,7 @@ zero third-party dependencies (hand-rolled JSON-RPC, newline-delimited).
 }
 ```
 
-## Tools (35)
+## Tools (36)
 
 `status screenshot dump tap swipe type key launch packages notify clip_get
 clip_set record files_pull files_push files_ls ground fleet desk mirror run

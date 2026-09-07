@@ -11,8 +11,8 @@ install.ps1                              # one-command setup (repo root)
 README.md / CHANGELOG.md / LICENSE / .gitignore / skills.sh.json
 skills/smartphone-use/                   # canonical skill (skills.sh layout)
   SKILL.md                               # agent instructions (keep < ~300 lines)
-  scripts/phone.py                       # the CLI — 31 subcommands, v2.2.0
-  scripts/mcp_server.py                  # MCP stdio server — 35 tools
+  scripts/phone.py                       # the CLI — 32 subcommands, v2.3.1
+  scripts/mcp_server.py                  # MCP stdio server — 36 tools
   scripts/install-deps.ps1               # Windows deps (adb + scrcpy + pillow)
   references/*.md                        # deep dives (load on demand, 1 topic each)
   assets/                                # checklist-connection.txt, example-flows.md

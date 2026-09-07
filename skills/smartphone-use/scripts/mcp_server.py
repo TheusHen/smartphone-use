@@ -255,6 +255,10 @@ tool("diag", "Support bundle (status + eval + versions), optional zip.",
      _props(out={"type": "string"}),
      lambda a: invoke(phone.cmd_diag, ns(out=a.get("out"))))
 
+tool("awake", "Keep the screen on during sessions (on/off/status).",
+     _props(action={"type": "string"}),
+     lambda a: invoke(phone.cmd_awake, ns(action=a.get("action", "status"))))
+
 tool("connect_usb", "Connect via USB (after enabling USB debugging).",
      _props(), lambda a: invoke(phone.cmd_connect_usb, ns()))
 

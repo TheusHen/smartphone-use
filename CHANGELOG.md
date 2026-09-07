@@ -1,6 +1,24 @@
 # Changelog
 
-## 2.2.0 — Self-healing + first-run
+## 2.3.1 — Mandatory awake + lock detection
+
+- `awake` is now a MANDATORY precondition in the skill (golden rule 6):
+  never act before it confirms — the human will walk away
+- `awake status` and every `observe` report `keyguard_locked`, so the agent
+  detects a locked phone instead of tapping at a PIN pad; locked status
+  carries an `attention` directive (stop, call human back, resume fresh)
+- Walk-away recovery playbook in SKILL.md + device-power.md + example flow 0b
+  (never guess PINs — lockout/wipe risk)
+
+## 2.3.0 — Stay-awake sessions
+
+- `awake on|off|status`: stay-on-while-plugged + 30-min timeout + wake +
+  swipe-keyguard dismiss (reversible, no root); keeps the screen alive while
+  the model thinks between steps
+- Wired into Flows A/B (first thing after connect), session hygiene
+  (`awake off` at disconnect), and the sleep/lock troubleshooting entry
+- Honest limit documented: PIN/password locks need one human unlock
+- MCP grows to 36 tools
 
 - `--retries N`: auto-repeats failures classified `retry=auto` with backoff
   (each attempt logged; last result stands)

@@ -135,7 +135,7 @@ to retry, ask you, or fix the request.
 skills/smartphone-use/           # canonical skill (skills.sh layout)
   SKILL.md                       # agent instructions: diagnose → connect → control
   scripts/
-    phone.py                     # the only CLI the agent needs (31 subcommands)
+    phone.py                     # the only CLI the agent needs (32 subcommands)
     mcp_server.py                # MCP stdio server: 35 tools, zero extra deps
     install-deps.ps1             # Windows dependency installer (adb + scrcpy + pillow)
   references/                    # deep dives, loaded on demand
@@ -177,6 +177,7 @@ on first setup.
 |---|---|
 | `status --json` | Diagnose setup + list devices with cause codes |
 | `setup [--mode]` | First-run wizard (guides, waits, proves) |
+| `awake on\|off\|status` | Keep screen on during sessions (reversible, no root) |
 | `doctor [--fix]` | Host + server health, safe auto-repair |
 | `diag [--out]` | Support bundle (status + eval + versions) |
 | `connect-usb` | Connect over USB |
@@ -212,7 +213,7 @@ on first setup.
 python skills/smartphone-use/scripts/mcp_server.py
 ```
 
-35 tools: status/setup/doctor/diag/screenshot/dump/observe/wait_for/tap/swipe/type/key/launch/packages/notify/
+36 tools: status/setup/doctor/diag/awake/screenshot/dump/observe/wait_for/tap/swipe/type/key/launch/packages/notify/
 clip_get/clip_set/record/files_pull/files_push/files_ls/ground/fleet/desk/
 mirror/run/recipe_new/recipe_check/eval/connect_usb/pair/connect_wifi/
 disconnect/tunnel/shell. See `skills/smartphone-use/references/mcp.md`.

@@ -1,7 +1,39 @@
 # Device Power Commands (V2)
 
 Beyond tap/type: read notifications, move clipboard and files, record video,
-run apps in a virtual display, and survey the whole fleet.
+run apps in a virtual display, survey the whole fleet — and keep the screen
+awake while the agent thinks.
+
+## Stay awake — `awake on | off | status` (MANDATORY after every connect!)
+
+The model spends minutes "thinking" between steps, and the human WILL walk
+away — without this the screen sleeps, the phone locks, and the session
+dies. `awake on` is not optimization, it is a precondition: never act before
+it confirms. It sets stay-on-while-plugged, a 30-minute sleep timeout
+(highest most OEMs honor), wakes the screen, and dismisses the swipe
+keyguard — reversible, no root:
+
+```powershell
+phone.py awake on      # first thing after connect-usb / connect-wifi
+phone.py awake status  # stay_on, timeout, wakefulness + keyguard_locked
+phone.py awake off     # restores stay-off + 1-min timeout (at disconnect)
+```
+
+`awake status` (and every `observe`) reports `keyguard_locked: true/false`.
+Check it whenever a screen looks wrong — a black screen or a PIN pad means
+the human walked away, not a broken flow.
+
+## Walk-away playbook (it WILL happen)
+
+1. `awake status` → `keyguard_locked: true` (or `attention` field present).
+2. Stop acting. Say: "phone is locked — unlock it once and tell me".
+3. On confirmation: `awake on` → fresh `observe` → resume from the CURRENT
+   screen (state may have changed while locked; never blind-replay).
+4. Never tap a PIN pad hoping — wrong guesses can trigger lockout or wipe.
+
+Hard limit, by Android design: a **PIN/password/pattern lock can never be
+dismissed over ADB**. The human unlocks once; `awake on` stops it from
+re-locking. Mirror users can additionally pass `--stay-awake` to scrcpy.
 
 ## Notifications — `notify [--filter TEXT]`
 

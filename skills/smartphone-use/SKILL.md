@@ -27,8 +27,15 @@ human) + **UI dumps** (semantic element lookup, no Appium needed) +
 5. **Confirm visually.** After every 1–3 actions, take a `screenshot` (and
    `dump` when you need element text) and verify the screen actually changed
    before continuing the flow.
-6. **Close cleanly.** End every session with `phone.py disconnect` and tell
-   the user to turn debugging off when they are done.
+6. **AWAKE IS MANDATORY, not optional.** Run `phone.py awake on` immediately
+   after EVERY connect — the human WILL walk away and the phone WILL lock.
+   Never tap anything before `awake on` confirms. If you later find a
+   PIN/password screen, STOP acting: call the human back, wait for the
+   unlock, re-run `awake on`, resume from a fresh `observe`. ADB can never
+   unlock it for you.
+7. **Close cleanly.** End every session with `phone.py awake off` +
+   `phone.py disconnect` and tell the user to turn debugging off when they
+   are done.
 
 ## 1. When to activate / when NOT to activate
 
@@ -107,7 +114,9 @@ replay: layouts shift between screens and OS versions
 1. phone.py status --json
 2. If empty: walk the user through §2 USB steps (one question at a time).
 3. phone.py connect-usb [-s SERIAL]
-4. phone.py screenshot prove.png  → confirm you see the home screen.
+4. phone.py awake on  → MANDATORY (rule 6): the screen must stay on while
+   you think between steps. Do not proceed until it confirms.
+5. phone.py screenshot prove.png  → confirm you see the home screen.
 ```
 
 ### Flow B — Wi-Fi LAN (Android 11+, equal citizen)
@@ -118,10 +127,11 @@ replay: layouts shift between screens and OS versions
    ⚠️ The pairing port is EPHEMERAL (e.g. 37891) and ≠ the connection port.
 3. Ask for the connection endpoint:
    phone.py connect-wifi <IP:CONNECTION-PORT>   # usually ...:5555
-4. phone.py screenshot prove.png → confirm.
-5. Keep the phone awake while working; on failure return to Flow A, then
-   re-run `connect-wifi` (authorization survives; pairing usually does not
-   need repeating on the same network).
+4. phone.py awake on → MANDATORY (rule 6): model latency between steps
+   must never meet a locked screen. Do not proceed until it confirms.
+5. phone.py screenshot prove.png → confirm.
+6. On failure return to Flow A, then re-run `connect-wifi` (authorization
+   survives; pairing usually does not need repeating on the same network).
 ```
 
 Common Wi-Fi traps: PC on Ethernet-VLAN ≠ phone Wi-Fi; guest networks with
@@ -182,6 +192,7 @@ Command reference (`phone.py <cmd> --help` for flags; all accept `--json`,
 |---|---|
 | Diagnose | `status --json` / `fleet` (model, Android, battery, transport) / `eval [--act]` (self-test harness) / `doctor [--fix]` (host+server health, auto-repair) / `diag [--out bundle.zip]` (handoff bundle) |
 | First run | `setup [--mode usb\|wifi]` (wizard: guides, waits, proves with screenshot) |
+| Stay awake | `awake on` right after connect (screen stays on while you think); `awake off` at the end; `awake status` to inspect |
 | Open app | `launch com.android.settings` / find pkg via `packages --filter name` |
 | See everything at once | `observe now.png` (screenshot + elements + foreground app in ONE call — prefer over screenshot+dump separately) |
 | See screen | `screenshot out.png [--annotate]` (numbered boxes, needs Pillow) |
@@ -242,6 +253,21 @@ metacharacter mangling, nothing logged in shell history).
   gestures.
 - **Windows sees "Unknown USB device"** → OEM driver missing → install
   vendor driver, replug, `status` again.
+- **Screen sleeps/locks mid-session** → you skipped `awake on` → run it now
+  (stay-on + 30-min timeout + wake). If a **PIN/password/pattern** prompt is
+  up, ADB can never dismiss it by design: ask the human to unlock once, then
+  `awake on` keeps it from re-locking. `awake status` shows the policy.
+- **Human walked away and it locked (the walk-away playbook).** Assume this
+  WILL happen on long tasks. Recovery, in order:
+  1. `phone.py awake status --json` → read `keyguard_locked` (and
+     `observe` reports it on every read too).
+  2. If `true`: STOP all acting commands immediately. Tell the user plainly:
+     "phone is locked — unlock it once and tell me".
+  3. After they confirm: `phone.py awake on` → fresh `observe` → resume the
+     flow from the CURRENT screen (never replay blindly; the app state may
+     have changed while locked).
+  4. Never tap at a PIN pad "just in case" — wrong guesses can wipe or
+     lock out the device.
 - **Flaky daemon / missed tap / transient dump failure** → `retry: auto` →
   re-run with `--retries 2` (backoff built in); only `auto` causes repeat.
 - **`env-missing` (Pillow etc.)** → host dependency gap, not a device
@@ -257,8 +283,8 @@ one targeted question. Full matrix: `references/troubleshooting.md`.
   spending money, sending messages on the user's behalf, or wiping data.
 - Never toggle OEM unlocking, never accept debugging prompts on PCs the user
   doesn't own, never leave Wireless debugging on after the session —
-  `disconnect` + Developer-options OFF + *Revoke authorizations* on shared
-  machines.
+  `disconnect` + `awake off` + Developer-options OFF + *Revoke authorizations*
+  on shared machines.
 - Treat screenshots/dumps as sensitive: they may contain messages, codes,
   photos. Don't store them beyond the task; don't paste them anywhere else.
 - One device at a time: with several attached, every acting command carries

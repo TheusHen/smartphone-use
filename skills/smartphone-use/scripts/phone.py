@@ -60,7 +60,7 @@ import urllib.error
 import urllib.request
 import xml.etree.ElementTree as ET
 
-VERSION = "2.2.0"
+VERSION = "2.3.1"
 
 # Windows legacy consoles default to cp1252, which cannot encode device text
 # (accents, emoji in notifications/titles). Prefer UTF-8; best-effort.
@@ -502,8 +502,10 @@ def cmd_disconnect(args: argparse.Namespace) -> int:
     run_adb(["usb"])
     return emit_ok({"disconnected": args.endpoint or "all",
                     "raw": (proc.stdout + proc.stderr).strip(),
-                    "note": "Transport reset to USB. Disable Wireless/USB "
-                            "debugging on the phone when finished."},
+                    "note": "Transport reset to USB. Run `phone.py awake "
+                            "off` to restore sleep settings, and disable "
+                            "Wireless/USB debugging on the phone when "
+                            "finished."},
                    args.json)
 
 
@@ -1253,6 +1255,24 @@ def focused_package(serial: str) -> str:
     return ""
 
 
+def keyguard_locked(serial: str):
+    """Best-effort lockscreen state. True/False, or None when unknown.
+
+    Lets the agent detect 'the human walked away and it locked' instead of
+    tapping blindly at a PIN pad ADB can never pass.
+    """
+    try:
+        out = adb_shell(serial, "dumpsys", "window", "windows", timeout=15)
+    except PhoneError:
+        return None
+    if re.search(r"mShowingLockscreen=true|mDreamingLockscreen=true|"
+                 r"mKeyguardLocked=true", out):
+        return True
+    if "mShowingLockscreen=false" in out:
+        return False
+    return None
+
+
 def list_text_nodes(serial: str, limit: int = 60) -> list[dict]:
     root = pull_ui_dump(serial)
     items = []
@@ -1350,6 +1370,7 @@ def cmd_observe(args: argparse.Namespace) -> int:
     return emit_ok({"screenshot": os.path.abspath(args.output),
                     "screen": [width, height],
                     "focused_package": focused_package(serial),
+                    "keyguard_locked": keyguard_locked(serial),
                     "serial": serial,
                     "elements": elements,
                     "element_count": len(elements)}, args.json)
@@ -1404,6 +1425,88 @@ def cmd_wait_for(args: argparse.Namespace) -> int:
 
 
 # --- device power commands ---------------------------------------------------
+AWAKE_TIMEOUT_MS = "1800000"  # 30 min — highest most OEMs honor
+SLEEP_TIMEOUT_MS = "60000"    # sane restore default (1 min)
+
+
+def cmd_awake(args: argparse.Namespace) -> int:
+    """Keep the screen on for agent sessions. Reversible, no root.
+
+    - `on`: stay-on-while-plugged + 30-min timeout + wake + dismiss
+      swipe-keyguard. Covers the minutes the model spends "thinking"
+      between steps.
+    - `off`: restores stay-off + 1-min timeout.
+    - `status`: reports current sleep policy + wakefulness.
+    A PIN/password/pattern lock can NEVER be dismissed by ADB (by design) —
+    the human unlocks once, `awake on` keeps it from re-locking.
+    """
+    try:
+        if args.action == "status":
+            dev = pick_device(args.serial)
+            serial = dev["serial"]
+            stay = adb_shell(serial, "settings", "get", "global",
+                             "stay_on_while_plugged_in").strip()
+            timeout = adb_shell(serial, "settings", "get", "system",
+                                "screen_off_timeout").strip()
+            try:
+                power = adb_shell(serial, "dumpsys", "power", timeout=15)
+                wake = re.search(r"mWakefulness=(\w+)", power)
+                wakefulness = wake.group(1) if wake else "unknown"
+            except PhoneError:
+                wakefulness = "unknown"
+            locked = keyguard_locked(serial)
+            payload = {"stay_on_while_plugged_in": stay,
+                       "screen_off_timeout_ms": timeout,
+                       "wakefulness": wakefulness,
+                       "keyguard_locked": locked if locked is not None
+                       else "unknown"}
+            if locked:
+                payload["attention"] = (
+                    "Phone is LOCKED — stop acting, call the human back to "
+                    "unlock once, then `awake on` + resume from a fresh "
+                    "screenshot.")
+            return emit_ok(payload, args.json)
+        if wants_dry(args):
+            return dry_emit(
+                args, f"adb -s <device> svc power stayon "
+                f"{'true' if args.action == 'on' else 'false'} + "
+                f"screen_off_timeout="
+                f"{AWAKE_TIMEOUT_MS if args.action == 'on' else SLEEP_TIMEOUT_MS}")
+        dev = pick_device(args.serial)
+        serial = dev["serial"]
+        if args.action == "on":
+            try:
+                adb_shell(serial, "svc", "power", "stayon", "true")
+            except PhoneError:
+                adb_shell(serial, "settings", "put", "global",
+                          "stay_on_while_plugged_in", "7")
+            adb_shell(serial, "settings", "put", "system",
+                      "screen_off_timeout", AWAKE_TIMEOUT_MS)
+            adb_shell(serial, "input", "keyevent", "224")  # WAKEUP
+            try:
+                adb_shell(serial, "wm", "dismiss-keyguard")
+            except PhoneError:
+                pass  # swipe keyguard dismissed when possible; secure
+                # locks stay — the human unlocks once (see note below)
+            stay = adb_shell(serial, "settings", "get", "global",
+                             "stay_on_while_plugged_in").strip()
+            timeout = adb_shell(serial, "settings", "get", "system",
+                                "screen_off_timeout").strip()
+            return emit_ok(
+                {"awake": True, "stay_on_while_plugged_in": stay,
+                 "screen_off_timeout_ms": timeout,
+                 "note": "Screen stays on while plugged in (USB) + 30-min "
+                         "timeout on battery. Run `phone.py awake off` when "
+                         "done. A PIN/password lock still needs ONE human "
+                         "unlock — ADB can never bypass it."}, args.json)
+        adb_shell(serial, "svc", "power", "stayon", "false")
+        adb_shell(serial, "settings", "put", "system",
+                  "screen_off_timeout", SLEEP_TIMEOUT_MS)
+        return emit_ok({"awake": False,
+                        "note": "Sleep policy restored (stay-off, 1-min "
+                                "timeout)."}, args.json)
+    except PhoneError as err:
+        return emit_error(err, args.json)
 def cmd_notify(args: argparse.Namespace) -> int:
     """List current notifications (read-only)."""
     try:
@@ -2097,6 +2200,13 @@ def build_parser() -> argparse.ArgumentParser:
     c.add_argument("--remote", default="user@remote-pc",
                    help="SSH destination for --via ssh.")
     c.set_defaults(func=cmd_tunnel)
+
+    c = add("awake", help="Keep the screen on during sessions "
+                            "(reversible, no root).")
+    c.add_argument("action", choices=["on", "off", "status"],
+                   help="on: stay-awake + 30-min timeout + wake; off: "
+                        "restore defaults; status: report policy.")
+    c.set_defaults(func=cmd_awake)
 
     c = add("notify", help="List current notifications (read-only).")
     c.add_argument("--filter", default=None,

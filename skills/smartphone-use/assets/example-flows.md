@@ -8,10 +8,25 @@ Add `-s SERIAL` whenever more than one device is attached.
 ```powershell
 python scripts/phone.py doctor --fix        # host health + safe repairs
 python scripts/phone.py setup --mode usb    # wizard: guides, waits, proves
+python scripts/phone.py awake on            # keep screen on while you think
 # flaky daemon? let retryable failures repeat themselves:
 python scripts/phone.py --retries 2 tap --text "Save" --verify
 # stuck? hand over a bundle, not screenshots of terminals:
 python scripts/phone.py diag --out diag.zip
+# done? restore everything:
+python scripts/phone.py awake off
+python scripts/phone.py disconnect
+```
+
+## 0b. Locked while away — recovery
+
+```powershell
+python scripts/phone.py awake status --json
+# keyguard_locked: true → STOP. Tell the user:
+#   "phone is locked — unlock it once and tell me"
+# on confirmation:
+python scripts/phone.py awake on
+python scripts/phone.py observe now.png --json   # resume from CURRENT screen
 ```
 
 ## 1. Prove the connection (Settings toggle)
