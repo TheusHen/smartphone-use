@@ -1,0 +1,23 @@
+SMARTPHONE USE — CONNECTION CHECKLIST (hand this to the user)
+=============================================================
+
+USB (pick this if anything else fails):
+[ ] Phone: Settings > About phone > tap Build number 7x
+[ ] Developer options > USB debugging = ON
+[ ] Plug a DATA cable into the PC (charge-only cables don't work)
+[ ] On the phone: accept "Allow USB debugging?" (+ Always allow)
+[ ] On the PC:  python scripts/phone.py status --json   -> state: device
+
+WI-FI (Android 11+, same network on phone + PC):
+[ ] USB flow works once (baseline)
+[ ] Developer options > Wireless debugging = ON
+[ ] Pair:  phone.py pair <IP:PAIR-PORT> <CODE>   (ephemeral port + 6 digits)
+[ ] Connect: phone.py connect-wifi <IP:5555>     (CONNECTION port, not pair port)
+[ ] phone.py screenshot prove.png  -> you see the home screen
+
+WHEN DONE:
+[ ] phone.py disconnect
+[ ] Turn Wireless/USB debugging OFF on the phone
+
+NEVER: expose port 5555 to the Internet. Remote = SSH/VPN tunnel only
+(see references/internet-tunnel.md).

@@ -1,0 +1,11 @@
+{
+  "$schema": "https://skills.sh/schemas/skills.sh.schema.json",
+  "notGrouped": "bottom",
+  "groupings": [
+    {
+      "title": "Mobile",
+      "description": "Skills for controlling and automating Android devices from a PC.",
+      "skills": ["smartphone-use"]
+    }
+  ]
+}

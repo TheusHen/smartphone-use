@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Task artifacts (screenshots, recordings, transcripts, local recipes)
+*.png
+*.mp4
+steps.jsonl
+shots/
+transcript/
+*.recipe.json
+
+# Local agent links (created by install.ps1, single source: skills/)
+.agents/
+.claude/
+.cursor/
+# OS / editors
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
