@@ -1,6 +1,14 @@
 # Smartphone Use — Android Computer Use via ADB
 
 [![skills.sh](https://skills.sh/b/TheusHen/smartphone-use)](https://skills.sh/TheusHen/smartphone-use)
+![version](https://img.shields.io/badge/version-2.2.0-blue)
+![license](https://img.shields.io/badge/license-MIT-green)
+![platform](https://img.shields.io/badge/platform-Windows-0078D6)
+![python](https://img.shields.io/badge/python-3.9%2B-3776AB)
+![cli](https://img.shields.io/badge/CLI-31%20commands-blue)
+![mcp](https://img.shields.io/badge/MCP-35%20tools-purple)
+![deps](https://img.shields.io/badge/deps-stdlib--only-lightgrey)
+![agents](https://img.shields.io/badge/agents-Codex%20%7C%20Claude%20%7C%20Cursor-orange)
 
 Connect an Android phone/tablet or emulator to your PC over **USB or Wi-Fi**,
 mirror it with **scrcpy**, and let an AI agent operate any app, chat, window,
@@ -10,6 +18,48 @@ iOS is explicitly out of scope for now (see
 
 Skills follow the [Agent Skills](https://agentskills.io/) format and install
 with the [skills.sh](https://skills.sh) CLI.
+
+```mermaid
+flowchart LR
+    subgraph Agents
+        A[Codex / Claude / Cursor]
+        M[MCP clients]
+    end
+    S[SKILL.md<br/>diagnose → connect → control]
+    CLI[phone.py<br/>31 commands]
+    MCP[mcp_server.py<br/>35 tools]
+    ADB[ADB transport]
+    D[(Android<br/>USB / Wi-Fi / emulator)]
+    SCR[scrcpy<br/>mirror / desk]
+    A --> S --> CLI --> ADB --> D
+    M --> MCP --> CLI
+    CLI --> SCR --> D
+```
+
+```mermaid
+flowchart TD
+    status[status / doctor] --> conn[connect-usb / pair + connect-wifi]
+    conn --> obs[observe]
+    obs --> act[tap / swipe / type + --verify]
+    act --> changed{ui_changed?}
+    changed -->|yes| obs
+    changed -->|no| fix[wait-for / re-ground / ask user]
+    fix --> obs
+    obs --> done[disconnect]
+```
+
+- [Available Skills](#available-skills)
+- [Installation](#installation)
+- [60-second demo](#60-second-demo)
+- [Why not just scrcpy / Appium?](#why-not-just-scrcpy--appium)
+- [Requirements](#requirements)
+- [Layout](#layout)
+- [Install from source](#install-from-source-one-command)
+- [Agent loop](#use-agent-loop)
+- [CLI quick reference](#cli-quick-reference)
+- [MCP server](#mcp-server-any-mcp-agent-can-drive-the-phone)
+- [Grounding](#grounding-when-xml-is-blind)
+- [Safety](#safety)
 
 ## Available Skills
 
@@ -37,6 +87,41 @@ npx skills add TheusHen/smartphone-use
 
 > Skills are automatically available once installed. Page:
 > https://skills.sh/TheusHen/smartphone-use
+>
+> **Compatibility note:** Eve and PromptScript don't support *global*
+> installs — install at project level instead (verified working):
+>
+> ```sh
+> npx skills add TheusHen/smartphone-use -p -y -a eve
+> npx skills add TheusHen/smartphone-use -p -y -a promptscript
+> ```
+
+## 60-second demo
+
+```powershell
+python skills/smartphone-use/scripts/phone.py doctor --fix
+python skills/smartphone-use/scripts/phone.py setup --mode usb
+python skills/smartphone-use/scripts/phone.py observe now.png --json
+python skills/smartphone-use/scripts/phone.py tap --text "Settings" --verify --json
+python skills/smartphone-use/scripts/phone.py wait-for --text "Settings" --timeout 15 --json
+python skills/smartphone-use/scripts/phone.py disconnect
+```
+
+Every `--json` result carries `ts` + `elapsed_ms`; every error carries
+`cause` + `action` + `retry: auto|user|no` — the agent always knows whether
+to retry, ask you, or fix the request.
+
+## Why not just scrcpy / Appium?
+
+| | Smartphone Use | scrcpy alone | Appium | Pure-vision phone agents |
+|---|---|---|---|---|
+| Diagnose + guided setup | Yes (`status`, `doctor`, `setup`) | No (raw errors) | No | Partial |
+| Semantic tap (no coordinates) | Yes (XML + VLM/OmniParser tiers) | No | Yes (heavy server) | Yes (GPU/API cost) |
+| Verify each action | Yes (`--verify`, `wait-for`) | Manual | Test asserts | Implicit |
+| Deterministic replay | Yes (recipes) | No | Scripts | No |
+| Works offline, stdlib-only | Yes | Yes | No (Node/Java stack) | No (model calls) |
+| Live mirror + virtual display | Yes (via scrcpy) | Yes | No | No |
+| MCP tools for any agent | Yes (35 tools) | No | No | Rare |
 
 ## Requirements
 
@@ -130,7 +215,7 @@ python skills/smartphone-use/scripts/mcp_server.py
 35 tools: status/setup/doctor/diag/screenshot/dump/observe/wait_for/tap/swipe/type/key/launch/packages/notify/
 clip_get/clip_set/record/files_pull/files_push/files_ls/ground/fleet/desk/
 mirror/run/recipe_new/recipe_check/eval/connect_usb/pair/connect_wifi/
-disconnect/tunnel/shell. See `references/mcp.md`.
+disconnect/tunnel/shell. See `skills/smartphone-use/references/mcp.md`.
 
 ## Grounding (when XML is blind)
 
